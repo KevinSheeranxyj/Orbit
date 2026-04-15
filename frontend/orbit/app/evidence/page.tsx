@@ -1,13 +1,7 @@
+import { PageShell } from "@/components/layout/page-shell";
 
-
-
-interface EvidenceBundle {
-    id: string,
-    idputHash: string,
-    outputHash: string,
-    policyHash: string,
-    storageRef: string,
-    createAt: string,
+export default function EvidencePage() {
+    return (
+        <PageShell title="Evidence" />
+    );
 }
-
-

@@ -1,6 +1,5 @@
-import { Wallet } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { Button } from "@/components/ui/button";
+import { WalletButton } from "@/components/ui/wallet-button";
 
 export function AppTopbar({ title }: { title: string }) {
     return (
@@ -19,10 +18,7 @@ export function AppTopbar({ title }: { title: string }) {
                     Testnet
                 </span>
                 <ThemeToggle />
-                <Button variant="outline" className="gap-1.5">
-                    <Wallet size={13} />
-                    Connect Wallet
-                </Button>
+                <WalletButton />
             </div>
         </header>
     );

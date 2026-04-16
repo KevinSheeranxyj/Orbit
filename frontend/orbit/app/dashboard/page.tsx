@@ -2,9 +2,10 @@ import { PageShell } from "@/components/layout/page-shell";
 import { MetricCard } from "./metric-card";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/badge";
-import { requests } from "@/lib/mock-data";
+import { getRequests } from "@/lib/api";
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+    const requests = await getRequests();
     const pending  = requests.filter((r) => r.status === "review_required").length;
     const executed = requests.filter((r) => r.status === "executed").length;
     const highRisk = requests.filter((r) => r.riskLevel === "high").length;

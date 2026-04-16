@@ -21,7 +21,7 @@ export default function SettingsPage() {
                         </h3>
                     </div>
                     <Row label="Network" value="0G Testnet" />
-                    <Row label="Chain ID" value="16600" />
+                    <Row label="Chain ID" value="16602" />
                     <Row label="RPC Endpoint" value="https://evmrpc-testnet.0g.ai" />
                 </Card>
 

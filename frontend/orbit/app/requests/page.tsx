@@ -1,12 +1,21 @@
 import { PageShell } from "@/components/layout/page-shell";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/badge";
-import { requests } from "@/lib/mock-data";
+import { getRequests } from "@/lib/api";
 import { shortenHash } from "@/lib/utils";
+import { NewRequestButton } from "./new-request-button";
 
-export default function RequestsPage() {
+export default async function RequestsPage() {
+    const requests = await getRequests();
+
     return (
         <PageShell title="Requests">
+            <div className="mb-4 flex items-center justify-between">
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                    {requests.length} total requests
+                </p>
+                <NewRequestButton />
+            </div>
             <Card className="overflow-hidden">
                 <div className="border-b border-zinc-200 px-5 py-4 dark:border-zinc-800">
                     <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">

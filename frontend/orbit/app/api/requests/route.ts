@@ -3,14 +3,14 @@ import { NextRequest, NextResponse } from "next/server";
 const API = process.env.BACKEND_URL ?? "http://localhost:4000";
 
 export async function GET() {
-    const res = await fetch(`${API}/api/approvals`, { cache: "no-store" });
+    const res = await fetch(`${API}/api/requests`, { cache: "no-store" });
     const data = await res.json();
     return NextResponse.json(data, { status: res.status });
 }
 
 export async function POST(req: NextRequest) {
     const body = await req.json();
-    const res = await fetch(`${API}/api/approvals`, {
+    const res = await fetch(`${API}/api/requests`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),

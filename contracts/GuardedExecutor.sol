@@ -103,9 +103,6 @@ contract GuardedExecutor {
         owner           = msg.sender;
         policyRegistry  = PolicyRegistry(_policyRegistry);
         receiptRegistry = ReceiptRegistry(_receiptRegistry);
-
-        // authorize self to write receipts
-        ReceiptRegistry(_receiptRegistry).authorizeExecutor(address(this));
     }
 
     // ─── Modifiers ────────────────────────────────────────────────────────────

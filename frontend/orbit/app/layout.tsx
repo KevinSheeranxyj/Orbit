@@ -1,6 +1,7 @@
 import "./globals.css";
 import { ReactNode } from "react";
 import { ThemeProvider } from "@/components/ui/theme-provider";
+import { WalletProvider } from "@/components/providers/wallet-provider";
 
 export const metadata = {
     title: "Orbit",
@@ -11,7 +12,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     return (
         <html lang="en" suppressHydrationWarning>
             <body>
-                <ThemeProvider>{children}</ThemeProvider>
+                <ThemeProvider>
+                    <WalletProvider>{children}</WalletProvider>
+                </ThemeProvider>
             </body>
         </html>
     );

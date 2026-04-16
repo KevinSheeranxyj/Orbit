@@ -1,9 +1,11 @@
 import { PageShell } from "@/components/layout/page-shell";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/badge";
-import { policies } from "@/lib/mock-data";
+import { getPolicies } from "@/lib/api";
 
-export default function PoliciesPage() {
+export default async function PoliciesPage() {
+    const policies = await getPolicies();
+
     return (
         <PageShell title="Policies">
             <div className="grid gap-4">

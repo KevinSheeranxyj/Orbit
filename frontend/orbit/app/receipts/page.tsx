@@ -1,11 +1,11 @@
 import { PageShell } from "@/components/layout/page-shell";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/badge";
-import { receiptByRequestId } from "@/lib/mock-data";
+import { getReceipts } from "@/lib/api";
 import { shortenHash } from "@/lib/utils";
 
-export default function ReceiptsPage() {
-    const receipts = Object.values(receiptByRequestId);
+export default async function ReceiptsPage() {
+    const receipts = await getReceipts();
 
     return (
         <PageShell title="Receipts">

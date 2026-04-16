@@ -5,7 +5,7 @@ import * as dotenv from "dotenv";
 dotenv.config();
 
 const PRIVATE_KEY = process.env.PRIVATE_KEY ?? "0x" + "0".repeat(64);
-const ZERO_G_RPC   = process.env.ZERO_G_RPC ?? "https://hub.0g.ai/faucet?network=testnet";
+const ZERO_G_RPC   = process.env.ZERO_G_RPC ?? "https://evmrpc-testnet.0g.ai";
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -25,7 +25,7 @@ const config: HardhatUserConfig = {
     },
     zeroGTestnet: {
       url: ZERO_G_RPC,
-      chainId: 16600,
+      chainId: 16602,
       accounts: [PRIVATE_KEY],
     },
   },

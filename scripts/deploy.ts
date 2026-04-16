@@ -33,6 +33,11 @@ async function main() {
     const geAddr = await guardedExecutor.getAddress();
     console.log("  GuardedExecutor →", geAddr);
 
+    // ── 4. Authorize GuardedExecutor to write receipts ───────────────────────
+    console.log("[Setup] Authorizing GuardedExecutor on ReceiptRegistry...");
+    await (await receiptRegistry.authorizeExecutor(geAddr)).wait();
+    console.log("  Authorized.");
+
     // ── Seed demo policy ─────────────────────────────────────────────────────
     console.log("\n[Setup] Registering demo policy...");
     const tx = await policyRegistry.registerPolicy(
@@ -55,10 +60,10 @@ async function main() {
     console.log("GuardedExecutor: ", geAddr);
     console.log("Demo Policy ID:  ", policyId);
     console.log("─────────────────────────────────────────────────────");
-    console.log("\nAdd these to your .env.local:");
-    console.log(`NEXT_PUBLIC_POLICY_REGISTRY=${prAddr}`);
-    console.log(`NEXT_PUBLIC_RECEIPT_REGISTRY=${rrAddr}`);
-    console.log(`NEXT_PUBLIC_GUARDED_EXECUTOR=${geAddr}`);
+    console.log("\nAdd these to frontend/orbit/.env.local:");
+    console.log(`NEXT_PUBLIC_POLICY_REGISTRY_ADDRESS=${prAddr}`);
+    console.log(`NEXT_PUBLIC_RECEIPT_REGISTRY_ADDRESS=${rrAddr}`);
+    console.log(`NEXT_PUBLIC_GUARDED_EXECUTOR_ADDRESS=${geAddr}`);
 }
 
 main().catch((err) => {

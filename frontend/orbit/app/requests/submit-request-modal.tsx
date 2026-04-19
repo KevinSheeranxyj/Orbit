@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useWriteContract, useWaitForTransactionReceipt, useAccount } from "wagmi";
 import {
     keccak256,
@@ -17,6 +18,8 @@ import { policies } from "@/lib/mock-data";
 import { GUARDED_EXECUTOR_ADDRESS, GUARDED_EXECUTOR_ABI } from "@/lib/contracts";
 import { shortenHash } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+
+const MOCK_SUBMISSION = true;
 
 // Convert a policy's string ID (e.g. "POL-001") to a bytes32 for demo purposes.
 // In production you would use the actual on-chain bytes32 returned by PolicyRegistry.
@@ -37,6 +40,7 @@ interface Props {
 }
 
 export function SubmitRequestModal({ isOpen, onClose }: Props) {
+    const router = useRouter();
     const { isConnected } = useAccount();
 
     // Form state
@@ -49,11 +53,18 @@ export function SubmitRequestModal({ isOpen, onClose }: Props) {
     const [formError, setFormError]   = useState("");
 
     const { writeContract, data: txHash, isPending, error: writeError, reset } = useWriteContract();
-    const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
+    const { isLoading: isConfirming, isSuccess: isOnChainSuccess } = useWaitForTransactionReceipt({ hash: txHash });
 
-    // After on-chain confirmation, persist to backend
+    const [mockPending, setMockPending] = useState(false);
+    const [mockTxHash, setMockTxHash] = useState<string | null>(null);
+    const [submittedRequest, setSubmittedRequest] = useState<any>(null);
+
+    const isSuccess = MOCK_SUBMISSION ? mockTxHash !== null : isOnChainSuccess;
+    const effectiveTxHash = MOCK_SUBMISSION ? mockTxHash : txHash;
+
+    // After real on-chain confirmation, persist to backend
     useEffect(() => {
-        if (isSuccess && txHash) {
+        if (!MOCK_SUBMISSION && isOnChainSuccess && txHash) {
             fetch("/api/requests", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -67,15 +78,20 @@ export function SubmitRequestModal({ isOpen, onClose }: Props) {
                     policyId,
                     txHash,
                 }),
-            }).catch(() => {/* best-effort */});
+            })
+                .then(() => router.refresh())
+                .catch(() => {/* best-effort */});
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isSuccess, txHash]);
+    }, [isOnChainSuccess, txHash]);
 
     if (!isOpen) return null;
 
     function handleClose() {
         reset();
+        setMockPending(false);
+        setMockTxHash(null);
+        setSubmittedRequest(null);
         setFormError("");
         setAmount("");
         setRecipient("");
@@ -90,27 +106,57 @@ export function SubmitRequestModal({ isOpen, onClose }: Props) {
             return "Recipient must be a valid 0x address.";
         if (tokenOption === "custom" && !isAddress(customToken))
             return "Custom token must be a valid 0x address.";
-        if (!isConnected)
+        if (!MOCK_SUBMISSION && !isConnected)
             return "Connect your wallet first.";
         return null;
     }
 
-    function handleSubmit(e: React.FormEvent) {
+    async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         setFormError("");
 
         const err = validate();
         if (err) { setFormError(err); return; }
 
+        if (MOCK_SUBMISSION) {
+            setMockPending(true);
+            try {
+                const res = await fetch("/api/requests", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        actionType: "payment",
+                        amount: Number(amount),
+                        token: tokenOption === "custom" ? customToken : "ETH",
+                        recipient,
+                        createdBy: "wallet",
+                        memo,
+                        policyId,
+                    }),
+                });
+                const json = await res.json();
+                if (!res.ok) {
+                    setFormError(json.error ?? "Submission failed.");
+                    return;
+                }
+                setSubmittedRequest(json.data);
+                setMockTxHash(json.data?.id ?? "submitted");
+                router.refresh();
+            } catch {
+                setFormError("Network error. Is the backend running?");
+            } finally {
+                setMockPending(false);
+            }
+            return;
+        }
+
         const tokenAddress =
             tokenOption === "custom"
                 ? (customToken as `0x${string}`)
                 : (tokenOption as `0x${string}`);
 
-        // Compute amount in wei / token base units (18 decimals for both ETH and demo USDC)
         const amountWei = parseUnits(amount, 18);
 
-        // Derive an evidence hash from the request inputs (off-chain bundle placeholder)
         const evidenceHash = keccak256(
             encodeAbiParameters(
                 parseAbiParameters("address, uint256, address, string"),
@@ -119,7 +165,6 @@ export function SubmitRequestModal({ isOpen, onClose }: Props) {
         );
 
         const policyBytes32 = policyStringToBytes32(policyId);
-        console.log(policyBytes32);
 
         writeContract({
             address: GUARDED_EXECUTOR_ADDRESS,
@@ -131,7 +176,7 @@ export function SubmitRequestModal({ isOpen, onClose }: Props) {
                 tokenAddress,
                 recipient as `0x${string}`,
                 evidenceHash,
-                "",   // storageRef — populated by backend after 0G upload
+                "",
                 memo,
             ],
         });
@@ -169,18 +214,66 @@ export function SubmitRequestModal({ isOpen, onClose }: Props) {
                 </div>
 
                 {/* Success state */}
-                {isSuccess && txHash ? (
-                    <div className="flex flex-col items-center gap-4 py-6 text-center">
-                        <CheckCircle size={40} className="text-emerald-500" />
-                        <div>
-                            <p className="font-semibold text-zinc-900 dark:text-zinc-50">
-                                Request submitted!
-                            </p>
-                            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                Tx: {shortenHash(txHash, 10, 6)}
-                            </p>
+                {isSuccess && effectiveTxHash ? (
+                    <div className="flex flex-col gap-4 py-6">
+                        <div className="flex items-center justify-center gap-3">
+                            <CheckCircle size={40} className="text-emerald-500" />
+                            <div>
+                                <p className="font-semibold text-zinc-900 dark:text-zinc-50">
+                                    Request submitted!
+                                </p>
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                    {MOCK_SUBMISSION
+                                        ? `ID: ${effectiveTxHash}`
+                                        : `Tx: ${shortenHash(effectiveTxHash as `0x${string}`, 10, 6)}`}
+                                </p>
+                            </div>
                         </div>
-                        <Button onClick={handleClose}>Done</Button>
+                        {submittedRequest && (
+                            <div className="space-y-2 rounded-lg border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-700 dark:bg-zinc-900">
+                                <div className="flex justify-between text-xs">
+                                    <span className="text-zinc-600 dark:text-zinc-400">Amount</span>
+                                    <span className="font-medium text-zinc-900 dark:text-zinc-50">
+                                        {submittedRequest.amount} {submittedRequest.token}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between text-xs">
+                                    <span className="text-zinc-600 dark:text-zinc-400">Recipient</span>
+                                    <span className="font-mono text-zinc-900 dark:text-zinc-50">
+                                        {shortenHash(submittedRequest.recipient as `0x${string}`, 6, 4)}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between text-xs">
+                                    <span className="text-zinc-600 dark:text-zinc-400">Status</span>
+                                    <span className="font-medium text-zinc-900 dark:text-zinc-50">
+                                        {submittedRequest.status}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between text-xs">
+                                    <span className="text-zinc-600 dark:text-zinc-400">Risk</span>
+                                    <span className={`font-medium ${
+                                        submittedRequest.riskLevel === "low" ? "text-emerald-600 dark:text-emerald-400" :
+                                        submittedRequest.riskLevel === "medium" ? "text-amber-600 dark:text-amber-400" :
+                                        "text-red-600 dark:text-red-400"
+                                    }`}>
+                                        {submittedRequest.riskLevel}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between text-xs">
+                                    <span className="text-zinc-600 dark:text-zinc-400">Recommendation</span>
+                                    <span className="font-medium text-zinc-900 dark:text-zinc-50">
+                                        {submittedRequest.recommendation}
+                                    </span>
+                                </div>
+                                {submittedRequest.memo && (
+                                    <div className="flex justify-between text-xs">
+                                        <span className="text-zinc-600 dark:text-zinc-400">Memo</span>
+                                        <span className="text-zinc-900 dark:text-zinc-50">{submittedRequest.memo}</span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                        <Button onClick={handleClose} className="w-full">Done</Button>
                     </div>
                 ) : (
                     <form onSubmit={handleSubmit} className="space-y-4">
@@ -271,7 +364,7 @@ export function SubmitRequestModal({ isOpen, onClose }: Props) {
                         )}
 
                         {/* Wallet not connected notice */}
-                        {!isConnected && (
+                        {!MOCK_SUBMISSION && !isConnected && (
                             <p className="text-center text-xs text-amber-600 dark:text-amber-400">
                                 Connect your wallet to submit on-chain.
                             </p>
@@ -284,12 +377,12 @@ export function SubmitRequestModal({ isOpen, onClose }: Props) {
                             </Button>
                             <Button
                                 type="submit"
-                                disabled={isPending || isConfirming || !isConnected}
+                                disabled={MOCK_SUBMISSION ? mockPending : (isPending || isConfirming || !isConnected)}
                             >
-                                {isPending || isConfirming ? (
+                                {(MOCK_SUBMISSION ? mockPending : (isPending || isConfirming)) ? (
                                     <>
                                         <Loader2 size={13} className="animate-spin" />
-                                        {isPending ? "Confirm in wallet…" : "Confirming…"}
+                                        {MOCK_SUBMISSION ? "Submitting…" : (isPending ? "Confirm in wallet…" : "Confirming…")}
                                     </>
                                 ) : (
                                     "Submit Request"
